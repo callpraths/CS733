@@ -1,0 +1,69 @@
+#include "ppp_cs.h"
+#include "cs.h"
+#include <stdio.h>
+#include <stdlib.h>
+//#include <sstream>
+//#include <sys/types.h>
+//#include <unistd.h>
+
+void test_conjugate_gradient(char const * A_file, char const * b_file, char const * x_file)
+{
+  cs * A = ppp_load_ccf(A_file);
+  cs * b = ppp_load_ccf(b_file);
+  cs * x = NULL, *D = NULL;
+  if(x_file)
+    x = ppp_load_ccf(x_file);
+  int j;
+
+  cs * o = cs_spalloc(A->n, 1, A->n, 1, 0); /* allocate result*/
+  for(j=0;j<=o->n;++j)
+    o->p[j] = 0;
+
+  csi mn = A->n > A->m ? A->n : A->m;
+  ppp_init_cs(mn);
+ 
+  int allowed = mn*10;
+  int i = conjugate_gradient(A, b, o, allowed, PPP_EPSILON/(100*mn));
+  fprintf(stdout, "Conjugate Gradient finished in %d rounds(allowed %d)\n", i, allowed);
+
+  /* Test equivalence */
+
+  if(x){
+    D = cs_add(x,o,1,-1);
+    double ratio = cs_norm(D) / cs_norm(x);
+    ratio = ratio * ratio;
+    if(ratio > PPP_EPSILON){
+      fprintf(stderr, "Diff found: NormRatio(%lf (Aim: %lf))\n", cs_norm(D)/cs_norm(x), PPP_EPSILON);
+    }else{
+      fprintf(stdout, "Success!\n");
+    }
+  }
+
+  /* clean up*/
+  cs_spfree(A);
+  cs_spfree(b);
+  cs_spfree(x);
+  cs_spfree(o);
+  cs_spfree(D);
+  ppp_done();
+}
+
+
+int main(int argc, char ** argv)
+{
+  if(argc < 3){
+    fprintf(stderr, "Usage: ./%s A_file b_file [x_file]\n", argv[0]);
+    fprintf(stderr, "  Solves [and tests] A_file * x_file = C_file\n");
+    return -1;
+  }
+  if(argc == 4)
+    test_conjugate_gradient(argv[1], argv[2], argv[3]);
+  else{
+    //pid_t mypid = getpid();
+    //stringstream ss;
+    //ss << "echo " << mypid << " >> /dev/cpuset/experiments/tasks";
+    //system(ss.str().c_str());
+    test_conjugate_gradient(argv[1], argv[2], NULL);
+  }
+  return 0;
+}

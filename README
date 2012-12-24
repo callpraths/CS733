@@ -1,0 +1,2 @@
+Needs CSparse.
+A library for CSparse is include in #/lib/ replace this with the library compiled for your machine.
